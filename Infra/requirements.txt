@@ -1,0 +1,7 @@
+pendulum
+pyathena
+aiohttp
+PyYAML
+requests
+aiofile
+smart-open

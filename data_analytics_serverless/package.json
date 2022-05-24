@@ -1,0 +1,20 @@
+{
+  "name": "etl-prodess",
+  "version": "1.1.0",
+  "devDependencies": {
+    "serverless-deployment-bucket": "^1.5.1",
+    "serverless-lift": "^1.17.0",
+    "serverless-offline": "^8.3.1",
+    "serverless-plugin-include-dependencies": "^5.0.0",
+    "serverless-pseudo-parameters": "^2.6.0",
+    "serverless-python-requirements": "^5.1.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "peerDependencies": {
+    "serverless": "2.x"
+  },
+  "author": "",
+  "license": "ISC"
+}

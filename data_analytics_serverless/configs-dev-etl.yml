@@ -1,0 +1,70 @@
+region: eu-west-1
+kmss3: 
+kmssecretmanager:
+kmssqs:
+  
+sqs_queue_name: tasks-queue
+
+aws_function_producer_vehicles_data: data-dev-etl-producer-vehicles-data
+aws_function_producer_sensor_data: data-dev-etl-producer-sensor-data
+aws_function_dawnloader: data-dev-etl-dawnloader
+aws_function_processing_data: data-dev-etl-queries-executor
+aws_function_next_task: data-dev-etl-call-next-task
+
+queries_results: "s3://sandbox/queries-results/"
+
+s3bucket: dev-data-sandbox
+raw_s3bucket: raw-data-sandbox
+
+athena_db: sandbox
+
+vehicles_tablename: vehicles_data
+sensor_tablename: sensor_data
+
+raw_vehicles_tablename: raw_vehicles_data
+raw_sensor_tablename: raw_sensor_data
+
+
+vehicles_secretname: vehicles-secret-name
+vehicles_secret_keyId: keyId
+sensor_secretname: sensor-secret-name
+sensor_secret_keyId: keyId
+
+
+vehicles_request_api_params:
+  filters:
+    fromCreationDate: 
+    toCreationDate:
+    timeZone: UTC
+  sortType:
+  pageSize: 2000 
+  page: 
+
+
+sensor_request_api_params:
+  filters:
+    fromCreationDate: 
+    toCreationDate:
+    timeZone: UTC
+  sortType:
+  pageSize: 15000 
+  page: 
+
+
+root_url_vehicles: "https://api.vehicles.com/"
+root_url_sensor: "https://api.sensors.com/"
+
+
+queries_store: github
+github_token_secretname: github-token-secretname
+github_auth_username: github_auth_username
+github_auth_tocken: github_auth_tocken
+github_owner: tozhovez
+github_repo: Data-Engineering
+github_path: data_analytics_serverless/queries
+github_branch: master
+
+slack-url-secret-name: slack-url-secret-name
+slack-url: slack-url
+slack_title_msg: "ETL Serverless"
+

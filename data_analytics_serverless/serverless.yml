@@ -1,0 +1,328 @@
+service: data
+#${opt:stage} = dev-etl
+# app and org for use with dashboard.serverless.com
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+frameworkVersion: '2'
+
+# Modes for config validation. `error` throws an exception, `warn` logs error to console, `off` disables validation at all. The default is warn.
+configValidationMode: warn
+
+
+#disabledDeprecations: # Disable deprecation logs by their codes. Default is empty.
+  # Deprecation code to disable
+  #- DEP_CODE_1
+  # Disable all deprecation messages
+  #- '*'
+
+plugins:
+  - serverless-python-requirements
+  - serverless-offline
+  - serverless-plugin-include-dependencies
+  - serverless-pseudo-parameters
+  - serverless-deployment-bucket
+  - serverless-lift
+custom:
+  includeDependencies:
+    enableCaching: true
+  pythonRequirements:
+    slim: true
+    layer: true
+  configfile: ${file(./configs-${opt:stage}.yml)}
+
+
+provider:
+  name: aws
+  runtime: python3.9
+  # Default stage to be used. Default is "dev"
+  stage: ${opt:stage}
+  # you can overwrite defaults here
+  # Default region to be used. Default is "us-east-1"
+  region: ${self:custom.configfile.region}
+  # The default profile to use with this service
+  profile: default
+  # The default is 6 seconds. Note: API Gateway current maximum is 30 seconds
+  timeout: 300
+  # Overwrite the default memory size. Default is 1024
+  memorySize: 1024
+  # Set the default RetentionInDays for a CloudWatch LogGroup
+  logRetentionInDays: 14
+  # Use a custom name for the CloudFormation stack
+  stackName: data-${opt:stage}
+
+  deploymentBucket:
+    # Prevents public access via ACLs or bucket policies. Default is false
+    blockPublicAccess: true
+    name: "data-${opt:stage}-serverless-deployment"
+    # enable bucket versioning. Default is false
+    versioning: false
+  # optional, version of hashing algorithm that should be used by the framework
+  lambdaHashingVersion: 20201221
+  # Optional function versioning
+  versionFunctions: false
+  # Service wide environment variables
+  environment:
+    CONFIGS_FILE: ./configs-${opt:stage}.yml
+  # you can add statements to the Lambda function's IAM Role here
+  #iamManagedPolicies:
+  #  - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+        - lambda:InvokeAsync
+      Resource:
+        - "arn:aws:lambda:${self:custom.configfile.region}:${aws:accountId}:function:data-${opt:stage}*"
+
+    - Effect: Allow
+      Action:
+        - sqs:SendMessage
+        - sqs:ReceiveMessage
+        - sqs:DeleteMessage
+        - sqs:GetQueueAttributes
+      Resource:
+        - "arn:aws:sqs:${self:custom.configfile.region}:${aws:accountId}:${self:custom.configfile.sqs_queue_name}"
+
+    - Effect: Allow
+      Action:
+        - s3:PutBucketNotification
+        - s3:GetBucketNotification
+        - s3:GetBucketLocation
+        - "s3:GetObject*"
+        - s3:ListBucketMultipartUploads
+        - s3:ListMultipartUploadParts
+        - s3:AbortMultipartUpload
+        - s3:CreateBucket
+        - "s3:PutObject*"
+        - s3:ListBucket
+        - "s3:DeleteObject*"
+      Resource:
+        - "arn:aws:s3:::${self:custom.configfile.s3bucket}"
+        - "arn:aws:s3:::${self:custom.configfile.s3bucket}/*"
+
+    - Effect: Allow
+      Action:
+        - secretsmanager:GetSecretValue
+        - secretsmanager:DescribeSecret
+      Resource:
+        # '*' add 6 digits to arn
+        - "arn:aws:secretsmanager:${self:custom.configfile.region}:${aws:accountId}:secret:vehicles-secretname*"
+        - "arn:aws:secretsmanager:${self:custom.configfile.region}:${aws:accountId}:secret:sensor-secretname*"
+        - "arn:aws:secretsmanager:${self:custom.configfile.region}:${aws:accountId}:secret:github-token-secretname*"
+        - "arn:aws:secretsmanager:${self:custom.configfile.region}:${aws:accountId}:secret:slack-url-secret-name*"
+
+    - Effect: Allow
+      Action:
+        - athena:BatchGetQueryExecution
+        - athena:StartQueryExecution
+        - athena:GetQueryResultsStream
+        - athena:ListDataCatalogs
+        - athena:GetQueryResults
+        - athena:GetDatabase
+        - athena:GetDataCatalog
+        - athena:ListWorkGroups
+        - athena:DeleteNamedQuery
+        - athena:GetNamedQuery
+        - athena:ListNamedQueries
+        - athena:GetWorkGroup
+        - athena:CreateNamedQuery
+        - athena:ListDatabases
+        - athena:StopQueryExecution
+        - athena:GetQueryExecution
+        - athena:CancelQueryExecution
+        - athena:GetExecutionEngine
+        - athena:GetExecutionEngines
+        - athena:GetNamespace
+        - athena:GetNamespaces
+        - athena:GetQueryExecutions
+        - athena:GetTable
+        - athena:GetTables
+        - athena:ListQueryExecutions
+        - athena:RunQuery
+        - athena:ListEngineVersions
+        - athena:GetTableMetadata
+        - athena:ListTableMetadata
+      Resource: "*"
+
+    - Effect: Allow
+      Action:
+        - kms:DescribeCustomKeyStores
+      Resource: "*"
+
+    - Effect: Allow
+      Action:
+        - kms:Decrypt
+        - kms:Encrypt
+        - kms:GenerateDataKey
+        - kms:ReEncryptTo
+        - kms:GenerateDataKeyWithoutPlaintext
+        - kms:DescribeKey
+        - kms:RetireGrant
+        - kms:CreateGrant
+        - kms:ReEncryptFrom
+
+      Resource: "*"
+      #Resource:
+        #- "arn:aws:kms:${self:custom.configfile.region}:${aws:accountId}:key/${self:custom.configfile.kmss3}"
+        #- "arn:aws:kms:${self:custom.configfile.region}:${aws:accountId}:key/${self:custom.configfile.kmssecretmanager}"
+
+    - Effect: Allow
+      Action:
+        - iam:ListRolePolicies
+        - iam:ListAttachedRolePolicies
+        - iam:GetRolePolicy
+        - iam:PassRole
+        - iam:GetRole
+      Resource:
+        - "arn:aws:iam::${aws:accountId}:role/service-role/AWSGlueServiceRole*"
+
+
+    - Effect: Allow
+      Action:
+        - glue:UpdatePartition
+        - glue:CreateDatabase
+        - glue:DeleteDatabase
+        - glue:GetDatabase
+        - glue:GetDatabases
+        - glue:UpdateDatabase
+        - glue:CreateTable
+        - glue:DeleteTable
+        - glue:BatchDeleteTable
+        - glue:UpdateTable
+        - glue:GetTable
+        - glue:GetTables
+        - glue:BatchCreatePartition
+        - glue:CreatePartition
+        - glue:DeletePartition
+        - glue:BatchDeletePartition
+        - glue:UpdatePartition
+        - glue:GetPartition
+        - glue:GetPartitions
+        - glue:BatchGetPartition
+      Resource: "*"
+
+
+constructs:
+  ${self:custom.configfile.sqs_queue_name}:
+    type: queue
+    maxRetries: 5
+    batchSize: 1
+    maxBatchingWindow: 0
+    alarm: tozhovez@gmail.com
+    worker:
+        name: data-${opt:stage}-dawnloader"
+        description: "serverless lambda triggered by queue recieve one msg queue"
+        handler: consumers/dawnloader.main_handler
+            memorySize: 1024
+            timeout: 300
+        layers:
+            - { Ref: PythonRequirementsLambdaLayer }
+        environment:
+            CONFIGS_FILE: ./configs-${opt:stage}.yml
+
+
+
+functions:
+  start-download-data:
+    name: data-${opt:stage}-start-download-data
+    description: "serverless lambda triggered by events cron and invoke lambda start-download-data"
+    handler: main.main_handler
+    layers:
+      - { Ref: PythonRequirementsLambdaLayer }
+    memorySize: 1024
+    timeout: 300
+    events:
+      - schedule:
+          rate: cron(0 1 * * ? *)
+          name: data-${opt:stage}-start-download-scheduled-event
+          description: "scheduled ones in day event"
+    environment:
+      CONFIGS_FILE: ./configs-${opt:stage}.yml
+
+  producer-vehicles-data:
+    name: data-${opt:stage}-producer-vehicles-data
+    description: "serverless lambda invokeed by start-download-data lambda"
+    handler: producers/vehicles.main_handler_vehicles_data
+    layers:
+      - { Ref: PythonRequirementsLambdaLayer }
+    memorySize: 1024
+    timeout: 300
+    events:
+      - http:
+          path: start-download-data
+          method: ANY
+          cors: true
+          private: true
+          integration: lambda
+    environment:
+      CONFIGS_FILE: ./configs-${opt:stage}.yml
+
+  producer-sensor-data:
+    name: data-${opt:stage}-producer-sensor-data
+    description: "serverless lambda invokeed by start-download-data lambda"
+    handler: producers/sensor.main_handler_sensor_data
+    layers:
+      - { Ref: PythonRequirementsLambdaLayer }
+    memorySize: 1024
+    timeout: 300
+    events:
+      - http:
+          path: producer-sensor-data
+          method: ANY
+          cors: true
+          private: true
+          integration: lambda
+    environment:
+      CONFIGS_FILE: ./configs-${opt:stage}.yml
+
+
+  queries-executor:
+    name: data-${opt:stage}-queries-executor
+    description: "serverless lambda triggered by events and invoke lambda"
+    handler: processing/queries_execution.main_queries_executor_handler
+    layers:
+      - { Ref: PythonRequirementsLambdaLayer }
+    memorySize: 1024
+    timeout: 60
+    events:
+      - http:
+          path: queries-executor
+          method: ANY
+          cors: true
+          private: true
+          integration: lambda
+    environment:
+      CONFIGS_FILE: ./configs-${opt:stage}.yml
+  
+  
+  call-next-task:
+    name: data-${opt:stage}-call-next-task
+    description: "serverless lambda call next lambda exec next task in loop"
+    handler: processing/queries_execution.next_queries_executor_handler
+    layers:
+      - { Ref: PythonRequirementsLambdaLayer }
+    memorySize: 3008
+    timeout: 840
+    events:
+      - http:
+          path: next-task
+          method: ANY
+          cors: true
+          private: true
+          integration: lambda
+    environment:
+      CONFIGS_FILE: ./configs-${opt:stage}.yml
+      
+  
+package:
+  excludeDevDependencies: true
+  patterns:
+    - '!.pytest_cache/**'
+    - '!node_modules/**'
+    - '!tests/**'
+    - '!.vscode/**'
+    - '!queries/**'
+    - '!tests_output/**'
+
