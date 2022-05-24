@@ -209,7 +209,7 @@ _days=CAST(date(from_unixtime(timestamp/1000)) AS date)_
 
 
 
-** Answer to Question 3 **
+**Answer to Question 3**
 
 ## Query: 
 -------------------------------------------------------------------------------
